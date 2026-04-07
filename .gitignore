@@ -1,0 +1,13 @@
+
+# Terraform state and local config
+*.tfstate
+*.tfstate.*
+.terraform/
+infra/terraform/terraform.tfvars
+
+# Environment files
+.env
+*.pem
+
+# Ansible generated inventory
+infra/ansible/inventory.ini
