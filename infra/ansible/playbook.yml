@@ -1,0 +1,166 @@
+- name: Configure aiqna-bot production server
+  hosts: all
+  become: true        # run all tasks with sudo
+  become_user: root
+  vars:
+    deploy_user: deploy
+    app_dir: /home/deploy/app
+ 
+  tasks:
+ 
+    # ── System packages ───────────────────────────────────────────────────
+ 
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+ 
+    - name: Install required system packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - ufw
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+        state: present
+ 
+    # ── Docker ────────────────────────────────────────────────────────────
+ 
+    - name: Add Docker official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+ 
+    - name: Add Docker apt repository
+      apt_repository:
+        repo: >
+          deb [arch=amd64]
+          https://download.docker.com/linux/ubuntu
+          {{ ansible_distribution_release }} stable
+        state: present
+ 
+    - name: Install Docker Engine and Compose plugin
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+ 
+    - name: Enable and start Docker daemon
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+ 
+    # Add deploy user to docker group so it can run docker without sudo
+    - name: Add deploy user to docker group
+      user:
+        name: '{{ deploy_user }}'
+        groups: docker
+        append: yes
+ 
+    # ── GitHub Actions SSH key ────────────────────────────────────────────
+    # Place the GitHub Actions public key in deploy's authorized_keys.
+    # This allows the CI/CD pipeline to connect directly to this server.
+ 
+    - name: Authorise GitHub Actions SSH key for deploy user
+      authorized_key:
+        user: '{{ deploy_user }}'
+        key: '{{ github_actions_pubkey }}'
+        state: present
+ 
+    # ── Application directories ───────────────────────────────────────────
+ 
+    - name: Create application directory structure
+      file:
+        path: '{{ item }}'
+        state: directory
+        owner: '{{ deploy_user }}'
+        group: '{{ deploy_user }}'
+        mode: '0755'
+      loop:
+        - '{{ app_dir }}'
+        - '{{ app_dir }}/aiqna-bot'
+        - '{{ app_dir }}/aiqna-bot/nginx'
+        - '{{ app_dir }}/aiqna-bot/logs'
+ 
+    # ── Nginx baseline config ─────────────────────────────────────────────
+    # Minimal config for the health check endpoint.
+    # The full config (with SSL and proxy rules) is deployed by GitHub Actions.
+ 
+    - name: Write baseline Nginx config
+      copy:
+        content: |
+          events { worker_connections 1024; }
+          http {
+            server {
+              listen 80;
+              server_name _;
+              location /health {
+                return 200 'ok';
+                add_header Content-Type text/plain;
+              }
+            }
+          }
+        dest: /etc/nginx/nginx.conf
+      notify: Reload Nginx
+ 
+    - name: Enable and start Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+ 
+    # ── UFW firewall ──────────────────────────────────────────────────────
+    # Second layer of protection — applied at the OS level.
+    # The DO Firewall (created by Terraform) is the first layer.
+ 
+    - name: Allow SSH through UFW
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+ 
+    - name: Allow HTTP through UFW
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+ 
+    - name: Allow HTTPS through UFW
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+ 
+    - name: Enable UFW with default deny policy
+      ufw:
+        state: enabled
+        policy: deny
+ 
+    # ── Verify Docker installation ────────────────────────────────────────
+ 
+    - name: Check Docker version
+      command: docker --version
+      register: docker_ver
+      changed_when: false
+ 
+    - name: Print Docker version
+      debug:
+        msg: '{{ docker_ver.stdout }}'
+ 
+  handlers:
+    - name: Reload Nginx
+      systemd:
+        name: nginx
+        state: reloaded

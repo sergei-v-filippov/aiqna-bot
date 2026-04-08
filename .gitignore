@@ -7,7 +7,11 @@ infra/terraform/terraform.tfvars
 
 # Environment files
 .env
+backend/.env
 *.pem
 
 # Ansible generated inventory
 infra/ansible/inventory.ini
+
+# Temporary files
+src/day*.ts
