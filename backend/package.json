@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/bot.js",
+    "dev":   "ts-node src/bot.ts"
   },
   "keywords": [],
   "author": "",
@@ -17,3 +20,4 @@
     "typescript": "^6.0.2"
   }
 }
+
