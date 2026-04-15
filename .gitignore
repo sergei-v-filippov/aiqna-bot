@@ -14,4 +14,10 @@ backend/.env
 infra/ansible/inventory.ini
 
 # Temporary files
+backend/src/day*.ts
 src/day*.ts
+
+# Node
+node_modules/
+backend/node_modules/
+backend/dist/
