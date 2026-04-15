@@ -1,0 +1,94 @@
+name: Deploy aiqna-bot
+ 
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # allows manual trigger from the GitHub UI
+ 
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+ 
+    steps:
+      # ── Checkout ───────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+ 
+      # ── Generate .env ──────────────────────────────────────────────────
+      # Build the .env file from GitHub Secrets.
+      # The file is never committed to git — it is generated fresh on each deploy.
+      - name: Generate .env file
+        run: |
+          cat > .env << EOF
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          DOMAIN=${{ secrets.DOMAIN }}
+          N8N_PASSWORD=${{ secrets.N8N_PASSWORD }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          QDRANT_URL=http://qdrant:6333
+          NODE_ENV=production
+          WEBHOOK_URL=https://${{ secrets.DOMAIN }}/webhook
+          N8N_HOST=${{ secrets.DOMAIN }}
+          EOF
+ 
+      # ── Copy files to server ───────────────────────────────────────────
+      # Sync all repo files except node_modules and .git.
+      - name: Copy files to production server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: ".,!node_modules,!.git,!infra"
+          target: /home/deploy/app/aiqna-bot
+          strip_components: 0
+ 
+      # ── Deploy ─────────────────────────────────────────────────────────
+      - name: Deploy with Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e  # abort on any error
+ 
+            cd /home/deploy/app/aiqna-bot
+ 
+            # Build updated bot image
+            docker compose build --no-cache bot
+ 
+            # Restart the bot and nginx; leave Qdrant and Postgres untouched
+            # to avoid data loss during routine deploys
+            docker compose up -d bot nginx
+ 
+            # Remove dangling images to free disk space
+            docker image prune -f
+ 
+            # Give the container a moment to start
+            sleep 5
+            docker compose ps bot
+            docker compose logs --tail=30 bot
+ 
+      # ── Health check ───────────────────────────────────────────────────
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.VPS_HOST }}/health || exit 1
+          echo "Health check passed"
+ 
+      # ── Notifications ──────────────────────────────────────────────────
+      - name: Notify success
+        if: success()
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -d chat_id=${{ secrets.ADMIN_CHAT_ID }} \
+            -d text="✅ aiqna-bot deployed successfully%0ABranch: ${{ github.ref_name }}%0ACommit: ${{ github.sha }}"
+ 
+      - name: Notify failure
+        if: failure()
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -d chat_id=${{ secrets.ADMIN_CHAT_ID }} \
+            -d text="❌ aiqna-bot deploy FAILED%0ACheck Actions: https://github.com/${{ github.repository }}/actions"
