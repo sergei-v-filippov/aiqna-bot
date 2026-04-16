@@ -11,6 +11,7 @@
     "module": "commonjs",
     "target": "ES2022",
     "outDir": "./dist",
+    "rootDir": "./src",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     //"target": "esnext",
