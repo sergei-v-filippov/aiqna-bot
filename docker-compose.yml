@@ -16,8 +16,9 @@ services:
       - WEBHOOK_URL=${WEBHOOK_URL}
       - NODE_ENV=${NODE_ENV:-production}
     depends_on:
-      qdrant:
-        condition: service_healthy
+      # qdrant:
+      #   condition: service_healthy
+      - qdrant
     networks:
       - app-net
     logging:
@@ -35,13 +36,13 @@ services:
       - qdrant_data:/qdrant/storage
     networks:
       - app-net
-    healthcheck:
-      # test: ["CMD", "curl", "-f", "http://localhost:6333/"]
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    # healthcheck:
+    #   # test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+    #   test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/ready || exit 1"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 20s
  
   # ── n8n Automation ────────────────────────────────────────────────────
   n8n:
