@@ -1,0 +1,9 @@
+{"chunksCount":6,"costEstimateUsd":0.00003098,"filename":"Profile (8).pdf","level":"info","message":"Document indexed","timestamp":"2026-04-24T05:22:52.761Z","tokensEstimate":1549,"userId":"238457337"}
+{"level":"info","message":"Query answered","question":"про кого документ?","timestamp":"2026-04-24T05:23:21.019Z","userId":"238457337"}
+{"level":"info","message":"Query answered","question":"Who is this document about?","timestamp":"2026-04-24T05:23:37.020Z","userId":"238457337"}
+{"level":"info","message":"Query answered","question":"what stack is used ?","timestamp":"2026-04-24T05:23:52.546Z","userId":"238457337"}
+{"level":"info","message":"Query answered","question":"years of experience?","timestamp":"2026-04-24T05:24:09.219Z","userId":"238457337"}
+{"level":"info","message":"Query answered","question":"years of experience?","timestamp":"2026-04-24T05:28:01.420Z","userId":"238457337"}
+{"level":"info","message":"Query answered","question":"years of experience?","timestamp":"2026-04-24T05:32:55.360Z","userId":"238457337"}
+{"level":"info","message":"Query answered","question":"про кого документ?","timestamp":"2026-04-24T05:33:06.736Z","userId":"238457337"}
+{"level":"info","message":"Bot started in long-polling mode","timestamp":"2026-04-24T06:46:23.187Z"}
